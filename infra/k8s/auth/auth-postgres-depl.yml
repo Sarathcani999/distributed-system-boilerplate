@@ -1,0 +1,88 @@
+# PersistentVolume pointing to your local directory
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: auth-postgres-pv
+  namespace: "ticketing"
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /Users/sarath/Documents/potions-lab/ticketting-app/data
+    type: DirectoryOrCreate
+---
+# PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auth-postgres-pvc
+  namespace: "ticketing"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-postgres-depl
+  namespace: "ticketing"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-postgres
+  template:
+    metadata:
+      labels:
+        app: auth-postgres
+    spec:
+      containers:
+        - name: auth-postgres
+          image: postgres:15.1-alpine
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "password"
+            - name: POSTGRES_DB
+              value: "auth"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: "/var/lib/postgresql/data"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: auth-postgres-pvc
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-postgres-srv
+  namespace: "ticketing"
+spec:
+  selector:
+    app: auth-postgres
+  ports:
+    - name: db
+      protocol: TCP
+      port: 5432
+      targetPort: 5432

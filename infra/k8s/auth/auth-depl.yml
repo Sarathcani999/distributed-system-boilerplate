@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: auth
-          image: sarathcani/auth:latest
+          image: sarathcani/auth
+          imagePullPolicy: Never
 ---
 # Service
 apiVersion: v1
